@@ -1,0 +1,52 @@
+BibtexFile = OptionalWhitespace ( BibtexEntry newline newline )* ( BibtexEntry newline )?;
+
+BibtexEntry = "@" BibtexType OptionalWhitespace "{" OptionalWhitespace EntryID "," Whitespace ( BibtexPropertyValue )+ OptionalWhitespace "}";
+
+BibtexType = "article"
+           | "book"
+           | "incollection"
+           | "inproceedings"
+           | "manual"
+           | "mastersthesis"
+           | "misc"
+           | "personalcommunication"
+           | "phdthesis"
+           | "techreport";
+
+BibtexPropertyValue = OptionalWhitespace BibtexProperty OptionalWhitespace "=" OptionalWhitespace "{" BibtexValue "}," newline;
+
+EntryID = ( alnum )+;
+
+BibtexProperty = "address"
+            | "author"
+            | "booktitle"
+            | "doi"
+            | "editor"
+            | "howpublished"
+            | "institution"
+            | "journal"
+            | "note"
+            | "number"
+            | "organization"
+            | "pages"
+            | "publisher"
+            | "school"
+            | "series"
+            | "title"
+            | "translator"
+            | "url"
+            | "volume"
+            | "year";
+
+BibtexValue = ( NestedValueChild )+;
+NestedValueChild = NoBraces
+			     | BracedValue;
+BracedValue = "{" BibtexValue "}";
+
+OptionalWhitespace = ( Space )*;
+Whitespace = ( Space )+;
+Space = blank
+      | newline;
+NoBraces = print
+         - "{"
+         - "}";
