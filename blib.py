@@ -27,6 +27,7 @@ REMOTE_PATH = realpath(expanduser(REMOTE_PATH))
 
 BIBTEX_CACHE_PATH = join_path(CACHE_DIR, 'bibtex')
 
+
 class BibTexWalker(ASTWalker):
 
     # pylint: disable = invalid-name, unused-argument, no-self-use
@@ -71,6 +72,7 @@ class BibTexWalker(ASTWalker):
     def _parse_BibtexValue(self, ast, results):
         return ast.match
 
+
 PARSER = BibTexWalker()
 
 
@@ -92,7 +94,9 @@ def main():
     assert f'_do_{args.action}' in globals(), f'Cannot find function _do_{args.action}'
     globals()[f'_do_{args.action}'](*args.terms)
 
+
 # utilities
+
 
 def _well_named(name):
     """Check if a name follows the convention.
@@ -107,6 +111,7 @@ def _well_named(name):
     """
     return re.match('[a-z]+[0-9]{4}[a-z]+(.pdf)?$', name, re.IGNORECASE)
 
+
 def _rel_path(filepath):
     assert _well_named(filepath), 'File {filepath} does not match AuthorYearBlurb convention'
     if not filepath.endswith('.pdf'):
@@ -114,16 +119,19 @@ def _rel_path(filepath):
     filepath = basename(filepath)
     return join_path(filepath[0].lower(), filepath)
 
+
 def _get_url(filepath):
     if not filepath.endswith('.pdf'):
         filepath += '.pdf'
     return 'https://' + join_path(REMOTE_HOST, 'papers', _rel_path(filepath))
+
 
 def _store(filepath):
     old_path = realpath(expanduser(filepath))
     new_path = join_path(LIBRARY_DIR, _rel_path(old_path))
     if old_path != new_path:
         _run_shell_command('mv', old_path, new_path)
+
 
 def _run_shell_command(command, *args, capture_output=False, verbose=True):
     if verbose:
@@ -133,6 +141,7 @@ def _run_shell_command(command, *args, capture_output=False, verbose=True):
         ))
     return run([command, *args], capture_output=capture_output)
 
+
 def _yield_all_attributes(*attributes, filter_fn=None):
     for entry in _read_bibtex().values():
         if filter_fn and not filter_fn(entry):
@@ -140,6 +149,7 @@ def _yield_all_attributes(*attributes, filter_fn=None):
         for role in attributes:
             if role in entry:
                 yield entry[role]
+
 
 def _read_bibtex(use_cache=True):
     if use_cache and exists(BIBTEX_CACHE_PATH) and getmtime(BIBTEX_CACHE_PATH) > getmtime(BIBTEX_PATH):
@@ -152,6 +162,7 @@ def _read_bibtex(use_cache=True):
         fd.write(repr(data))
     return data
 
+
 def _read_tags():
     result = {}
     with open(TAGS_PATH) as fd:
@@ -163,11 +174,14 @@ def _read_tags():
             result[entry_id] = set(tags)
     return result
 
+
 # main actions
+
 
 def _do_read(*filepaths):
     for filepath in filepaths:
         _store(filepath)
+
 
 def _do_tag(filepath, *tags):
     _store(filepath)
@@ -189,13 +203,16 @@ def _do_organizations():
     for organization in _yield_all_attributes('institution', 'school'):
         print(organization)
 
+
 def _do_publishers():
     for publisher in _yield_all_attributes('publisher'):
         print(publisher)
 
+
 def _do_journals():
     for journal in _yield_all_attributes('journal'):
         print(journal)
+
 
 def _do_conferences():
     generator = _yield_all_attributes(
@@ -205,15 +222,18 @@ def _do_conferences():
     for conference in generator:
         print(conference)
 
+
 def _do_people():
     for people in _yield_all_attributes('author', 'editor'):
         for person in people.split(' and '):
             print(person)
 
+
 def _do_tags():
     tags = set.union(*(_read_tags().values()))
     for tag in sorted(tags, key=str.lower):
         print(tag)
+
 
 def _do_index():
     index_path = join_path(LIBRARY_DIR, 'index.html')
@@ -231,13 +251,15 @@ def _do_index():
             fd.write('\n')
         fd.write('</pre>\n')
 
+
 def _do_sync():
     _do_pull()
     _do_index()
     _do_push()
 
+
 def _do_diff():
-    """Original shell script: 
+    """Original shell script:
 
     local_list="$(cd "$LOCAL_PATH" && find . -name '*.pdf')"
     remote_list="$()"
@@ -248,7 +270,7 @@ def _do_diff():
     fi;;
     """
     local_files = _run_shell_command(
-        'find', 
+        'find',
         LIBRARY_DIR,
         '-name', '*.pdf',
         capture_output=True,
@@ -264,12 +286,13 @@ def _do_diff():
     local_files = set(basename(path) for path in local_files)
     remote_files = set(basename(path) for path in remote_files)
     lines = {}
-    for diff in (local_files - remote_files):
+    for diff in local_files - remote_files:
         lines[diff] = '<'
-    for diff in (remote_files - local_files):
+    for diff in remote_files - local_files:
         lines[diff] = '>'
     for diff, symbol in sorted(lines.items()):
         print(f'{symbol} {diff}')
+
 
 def _do_push():
     _run_shell_command(
@@ -282,6 +305,7 @@ def _do_push():
         f'{REMOTE_HOST}:{REMOTE_PATH}',
     )
 
+
 def _do_pull():
     _run_shell_command(
         'rsync',
@@ -293,15 +317,18 @@ def _do_pull():
         LIBRARY_DIR,
     )
 
+
 def _do_url(*filepaths):
     for filepath in filepaths:
         print(_get_url(filepath))
+
 
 def _do_remove(*filepaths):
     for filepath in filepaths:
         remote_path = join_path(REMOTE_PATH, _rel_path(filepath))
         _run_shell_command('ssh', REMOTE_HOST, f"rm -vf '{remote_path}'")
         _run_shell_command('rm', '-vf', join_path(LIBRARY_DIR, _rel_path(filepath)))
+
 
 if __name__ == '__main__':
     main()
