@@ -113,7 +113,8 @@ def _well_named(name):
 
 
 def _rel_path(filepath):
-    assert _well_named(filepath), 'File {filepath} does not match AuthorYearBlurb convention'
+    if not _well_named(filepath):
+        print(f'WARNING: file {filepath} does not match AuthorYearBlurb convention')
     if not filepath.endswith('.pdf'):
         filepath += '.pdf'
     filepath = basename(filepath)
