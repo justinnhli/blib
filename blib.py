@@ -3,7 +3,7 @@
 import re
 from argparse import ArgumentParser
 from subprocess import run
-from os import makedirs
+from os import makedirs, walk
 from os.path import dirname, basename, realpath, expanduser, isdir
 from os.path import join as join_path, exists, getmtime, splitext
 from ast import literal_eval
@@ -27,6 +27,19 @@ REMOTE_PATH = realpath(expanduser(REMOTE_PATH))
 
 BIBTEX_CACHE_PATH = join_path(CACHE_DIR, 'bibtex')
 
+
+WEIRD_NAMES = {
+    'Computing Research Association': 'CRA',
+    'Liberal Arts Computer Science Consortium': 'LACS',
+    'The College Board': 'CB',
+    'The Join Task Force on Computing Curricula': 'JTFCC',
+    'others': '',
+    '{Google Inc.}': 'Google',
+    '{Gallup Inc.}': 'Gallup',
+    '{National Academies of Sciences, Engineering, and Medicine}': 'NASEM',
+    '{UMBEL Project}': 'UMBEL',
+    '{the ABC Research Group}': 'ABC',
+}
 
 class BibTexWalker(ASTWalker):
 
@@ -80,7 +93,7 @@ def main():
     arg_parser = ArgumentParser()
     actions = [
         # local management functions
-        'read', 'tag', 'biblint', 'filelint',
+        'read', 'tag', 'lint',
         # database functions
         'organizations', 'publishers', 'journals', 'conferences', 'people', 'tags',
         # remote management functions
@@ -109,7 +122,7 @@ def _well_named(name):
     Returns:
         bool: True if the name follows the convention.
     """
-    return re.match('[a-z]+[0-9]{4}[a-z]+(.pdf)?$', name, re.IGNORECASE)
+    return re.match('[a-z]+[0-9]{4}[0-9a-z]+(.pdf)?$', name, re.IGNORECASE)
 
 
 def _rel_path(filepath):
@@ -132,6 +145,13 @@ def _store(filepath):
     new_path = join_path(LIBRARY_DIR, _rel_path(old_path))
     if old_path != new_path:
         _run_shell_command('mv', old_path, new_path)
+
+
+def _get_library():
+    papers = {}
+    for path, _, files in walk(LIBRARY_DIR):
+        papers.update([basename(f)[:-4], join_path(path, f)] for f in files if f.endswith('.pdf'))
+    return papers
 
 
 def _run_shell_command(command, *args, capture_output=False, verbose=True):
@@ -190,15 +210,71 @@ def _do_tag(filepath, *tags):
     with open(TAGS_PATH, 'a') as fd:
         fd.write(' '.join([stem, *tags]) + '\n')
 
-def _do_biblint():
-    # FIXME check ids are well formed
-    # FIXME check names are in "Last, First" format
-    # FIXME potentially check required fields
-    raise NotImplementedError()
 
-def _do_filelint():
-    # FIXME check all files have corresponding bibtex entry
-    raise NotImplementedError()
+def _do_lint():
+
+    entries = _read_bibtex()
+    # check for non "last, first" authors and editors
+    for entry_id, entry in entries.items():
+        for attribute in ['author', 'editor']:
+            if attribute not in entry:
+                continue
+            people = entry[attribute].split(' and ')
+            if any((',' not in person) for person in people if person not in WEIRD_NAMES):
+                print(f'unconforming {attribute}s in {entry_id}:')
+                print(f'    current: {entry[attribute]}')
+                pattern = '(?P<first>[A-Z][^ ]*( [A-Z][^ ]*)*) (?P<last>.*)'
+                suggestion = ' and '.join([
+                    person if person in WEIRD_NAMES
+                    else re.sub(
+                        pattern,
+                        (lambda match: match.group('last') + ', ' + match.group('first')),
+                        person)
+                    for person in people
+                ])
+                print(f'    suggested: {suggestion}')
+    # check for incorrectly-formed IDs
+    for current_id, entry in entries.items():
+        first_author = entry['author'].split(' and ')[0]
+        first_author = WEIRD_NAMES.get(first_author, first_author.split(',')[0])
+        entry_id = first_author + entry['year'] + entry['title']
+        entry_id = re.sub(r'\\.{(.)}', r'\1', entry_id)
+        entry_id = re.sub('[^0-9A-Za-z]', '', entry_id)
+        if not entry_id.lower().startswith(current_id.lower()):
+            print(f'suspicious ID: {current_id.lower()} vs {entry_id.lower()}')
+            print(f'    {current_id.lower()}')
+            print(f'    {entry_id.lower()}')
+    # make sure all files in the library have an entry
+    library = _get_library()
+    for key in set(library.keys()) - set(entries.keys()):
+        print('missing entry for file {}'.format(library[key]))
+    # make sure all unusual words are quoted
+    for entry_id, entry in entries.items():
+        for word in entry.properties['title'].split():
+            if '{' in word:
+                continue
+            word = re.sub('[-/][A-Z]', '', word)
+            if len(re.findall('[A-Z]', word)) > 1: # TODO fails for {blah {Adams and McDonnell}}
+                print('unquoted title for {}: {}'.format(entry_id, entry.properties['title']))
+                break
+    '''
+    # make sure all journals have the same publisher
+    journals = {}
+    for entry_id, entry in entries.items():
+        if entry.bibtex_type != 'article':
+            continue
+        journal = entry.attributes['journal']
+        if journal in journals:
+            if 'publisher' not in entry.attributes:
+                print('publisher for journal "{}" is "{}"'.format(journal, journals[journal]))
+            elif journals[journal] != entry.attributes['publisher']:
+                print('publisher mismatch for journal: {}'.format(journal))
+        elif 'publisher' not in entry.attributes:
+            print('missing journal publisher: {}'.format(entry_id))
+    '''
+    # FIXME make sure all books(collections) have the same address, editor, month, publisher, and year
+    # FIXME potentially check required fields
+
 
 def _do_organizations():
     for organization in _yield_all_attributes('institution', 'school'):
