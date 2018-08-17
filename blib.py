@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 from argparse import ArgumentParser
 from subprocess import run
 from os import makedirs
@@ -93,7 +94,21 @@ def main():
 
 # utilities
 
+def _well_named(name):
+    """Check if a name follows the convention.
+
+    The convention is AuthorYearBlurb, with no punctuation.
+
+    Arguments:
+        name (str): The name of the file.
+
+    Returns:
+        bool: True if the name follows the convention.
+    """
+    return re.match('[a-z]+[0-9]{4}[a-z]+(.pdf)?$', name, re.IGNORECASE)
+
 def _rel_path(filepath):
+    assert _well_named(filepath), 'File {filepath} does not match AuthorYearBlurb convention'
     if not filepath.endswith('.pdf'):
         filepath += '.pdf'
     filepath = basename(filepath)
