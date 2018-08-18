@@ -122,7 +122,7 @@ def _well_named(name):
     Returns:
         bool: True if the name follows the convention.
     """
-    return re.match('[a-z]+[0-9]{4}[0-9a-z]+(.pdf)?$', name, re.IGNORECASE)
+    return re.match('[a-z]+[0-9]{4}[0-9a-z]+(.pdf)?$', basename(name), re.IGNORECASE)
 
 
 def _rel_path(filepath):
