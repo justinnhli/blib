@@ -250,12 +250,12 @@ def _do_lint():
         print('missing entry for file {}'.format(library[key]))
     # make sure all unusual words are quoted
     for entry_id, entry in entries.items():
-        for word in entry.properties['title'].split():
+        for word in entry['title'].split():
             if '{' in word:
                 continue
             word = re.sub('[-/][A-Z]', '', word)
             if len(re.findall('[A-Z]', word)) > 1: # TODO fails for {blah {Adams and McDonnell}}
-                print('unquoted title for {}: {}'.format(entry_id, entry.properties['title']))
+                print('unquoted title for {}: {}'.format(entry_id, entry['title']))
                 break
     '''
     # make sure all journals have the same publisher
