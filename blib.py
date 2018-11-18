@@ -254,7 +254,8 @@ def _do_lint():
             if '{' in word:
                 continue
             word = re.sub('[-/][A-Z]', '', word)
-            if len(re.findall('[A-Z]', word)) > 1: # TODO fails for {blah {Adams and McDonnell}}
+            # TODO this check fails for (eg.) {Response to {Adams and McDonnell}}
+            if len(re.findall('[A-Za-z][A-Z]', word)) > 1:
                 print('unquoted title for {}: {}'.format(entry_id, entry['title']))
                 break
     '''
