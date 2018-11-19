@@ -41,7 +41,7 @@ BibtexProperty = "address"
 BibtexValue = ( NestedValueChild )+;
 NestedValueChild = NoBraces
 			     | BracedValue;
-BracedValue = "{" BibtexValue "}";
+BracedValue = "{" ( BibtexValue )? "}";
 
 OptionalWhitespace = ( Space )*;
 Whitespace = ( Space )+;
