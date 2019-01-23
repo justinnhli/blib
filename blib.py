@@ -41,6 +41,11 @@ WEIRD_NAMES = {
     '{the ABC Research Group}': 'ABC',
 }
 
+ID_SUFFIXES = [
+    '[0-9]+',
+    'Thesis',
+]
+
 class BibTexWalker(ASTWalker):
 
     # pylint: disable = invalid-name, unused-argument, no-self-use
@@ -255,6 +260,10 @@ def do_lint():
         entry_id = first_author + entry['year'] + entry['title']
         entry_id = re.sub(r'\\.{(.)}', r'\1', entry_id)
         entry_id = re.sub('[^0-9A-Za-z]', '', entry_id)
+        current_id = current_id
+        while any(re.search(suffix + '$', current_id) for suffix in ID_SUFFIXES):
+            for suffix in ID_SUFFIXES:
+                current_id = re.sub(suffix + '$', '', current_id)
         if not entry_id.lower().startswith(current_id.lower()):
             print(f'suspicious ID: {current_id.lower()} vs {entry_id.lower()}')
             print(f'    {current_id.lower()}')
