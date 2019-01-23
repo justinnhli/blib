@@ -3,6 +3,7 @@
 import re
 from argparse import ArgumentParser
 from ast import literal_eval
+from collections import Counter
 from os import makedirs, walk
 from os.path import dirname, basename, realpath, expanduser, isdir
 from os.path import join as join_path, exists, getmtime, splitext
@@ -55,6 +56,10 @@ class BibTexWalker(ASTWalker):
         )
 
     def _parse_BibtexFile(self, ast, results):
+        id_counts = Counter(kv[0] for kv in results)
+        assert not any(count > 1 for count in id_counts.values()), (
+            'Duplicate IDs:\n' + '\n'.join('    ' + key for key, count in id_counts.items() if count > 1)
+        )
         return dict(results)
 
     def _parse_BibtexEntry(self, ast, results):
