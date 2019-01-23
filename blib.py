@@ -23,7 +23,6 @@ REMOTE_PATH = '/home/justinnhli/justinnhli.com/papers'
 
 BIBTEX_PATH = realpath(expanduser(BIBTEX_PATH))
 TAGS_PATH = realpath(expanduser(TAGS_PATH))
-REMOTE_PATH = realpath(expanduser(REMOTE_PATH))
 
 BIBTEX_CACHE_PATH = join_path(CACHE_DIR, 'bibtex')
 
