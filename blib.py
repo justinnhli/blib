@@ -224,6 +224,8 @@ def do_lint():
         for attribute in ['author', 'editor']:
             if attribute not in entry:
                 continue
+            if entry[attribute] in WEIRD_NAMES:
+                continue
             people = entry[attribute].split(' and ')
             if any((',' not in person) for person in people if person not in WEIRD_NAMES):
                 print(f'unconforming {attribute}s in {entry_id}:')
@@ -240,8 +242,11 @@ def do_lint():
                 print(f'    suggested: {suggestion}')
     # check for incorrectly-formed IDs
     for current_id, entry in entries.items():
-        first_author = entry['author'].split(' and ')[0]
-        first_author = WEIRD_NAMES.get(first_author, first_author.split(',')[0])
+        if entry['author'] in WEIRD_NAMES:
+            first_author = WEIRD_NAMES[entry['author']]
+        else:
+            first_author = entry['author'].split(' and ')[0]
+            first_author = WEIRD_NAMES.get(first_author, first_author.split(',')[0])
         entry_id = first_author + entry['year'] + entry['title']
         entry_id = re.sub(r'\\.{(.)}', r'\1', entry_id)
         entry_id = re.sub('[^0-9A-Za-z]', '', entry_id)
