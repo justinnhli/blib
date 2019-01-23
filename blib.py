@@ -2,11 +2,11 @@
 
 import re
 from argparse import ArgumentParser
-from subprocess import run
+from ast import literal_eval
 from os import makedirs, walk
 from os.path import dirname, basename, realpath, expanduser, isdir
 from os.path import join as join_path, exists, getmtime, splitext
-from ast import literal_eval
+from subprocess import run
 
 from pegparse import ASTWalker, create_parser_from_file
 
