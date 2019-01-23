@@ -103,8 +103,9 @@ def main():
     args = arg_parser.parse_args()
     if args.action in ['read', 'tag', 'url', 'remove'] and not args.terms:
         arg_parser.error(f'Action "{args.action}" requires additional arguments')
-    assert f'_do_{args.action}' in globals(), f'Cannot find function _do_{args.action}'
-    globals()[f'_do_{args.action}'](*args.terms)
+    function = f'do_{args.action}'
+    assert f'{function}' in globals(), f'Cannot find function {function}'
+    globals()[function](*args.terms)
 
 
 # utilities
@@ -203,21 +204,21 @@ def read_library(use_cache=True):
 # main actions
 
 
-def _do_read(*filepaths):
+def do_read(*filepaths):
     for filepath in filepaths:
         _store(filepath)
 
 
-def _do_tag(filepath, *tags):
+def do_tag(filepath, *tags):
     _store(filepath)
     stem = splitext(basename(filepath))[0]
     with open(TAGS_PATH, 'a') as fd:
         fd.write(' '.join([stem, *tags]) + '\n')
 
 
-def _do_lint():
+def do_lint():
 
-    entries = _read_bibtex()
+    entries = read_library()
     # check for non "last, first" authors and editors
     for entry_id, entry in entries.items():
         for attribute in ['author', 'editor']:
@@ -281,22 +282,22 @@ def _do_lint():
     # FIXME potentially check required fields
 
 
-def _do_organizations():
+def do_organizations():
     for organization in _yield_all_attributes('institution', 'school'):
         print(organization)
 
 
-def _do_publishers():
+def do_publishers():
     for publisher in _yield_all_attributes('publisher'):
         print(publisher)
 
 
-def _do_journals():
+def do_journals():
     for journal in _yield_all_attributes('journal'):
         print(journal)
 
 
-def _do_conferences():
+def do_conferences():
     generator = _yield_all_attributes(
         'booktitle',
         filter_fn=(lambda entry: entry['type'] == 'inproceedings'),
@@ -305,23 +306,23 @@ def _do_conferences():
         print(conference)
 
 
-def _do_people():
+def do_people():
     for people in _yield_all_attributes('author', 'editor'):
         for person in people.split(' and '):
             print(person)
 
 
-def _do_tags():
+def do_tags():
     tags = set.union(*(_read_tags().values()))
     for tag in sorted(tags, key=str.lower):
         print(tag)
 
 
-def _do_index():
+def do_index():
     index_path = join_path(LIBRARY_DIR, 'index.html')
     with open(index_path, 'w') as fd:
         fd.write('<pre>\n')
-        for entry_id, entry in sorted(_read_bibtex().items()):
+        for entry_id, entry in sorted(read_library().items()):
             entry_type = entry['type']
             url = _get_url(entry_id)
             fd.write(f'@{entry_type} {{<a href="{url}">{entry_id}</a>,\n')
@@ -334,13 +335,13 @@ def _do_index():
         fd.write('</pre>\n')
 
 
-def _do_sync():
-    _do_pull()
-    _do_index()
-    _do_push()
+def do_sync():
+    do_pull()
+    do_index()
+    do_push()
 
 
-def _do_diff():
+def do_diff():
     """Original shell script:
 
     local_list="$(cd "$LOCAL_PATH" && find . -name '*.pdf')"
@@ -376,7 +377,7 @@ def _do_diff():
         print(f'{symbol} {diff}')
 
 
-def _do_push():
+def do_push():
     _run_shell_command(
         'rsync',
         '--archive',
@@ -388,7 +389,7 @@ def _do_push():
     )
 
 
-def _do_pull():
+def do_pull():
     _run_shell_command(
         'rsync',
         '--archive',
@@ -400,12 +401,12 @@ def _do_pull():
     )
 
 
-def _do_url(*filepaths):
+def do_url(*filepaths):
     for filepath in filepaths:
         print(_get_url(filepath))
 
 
-def _do_remove(*filepaths):
+def do_remove(*filepaths):
     for filepath in filepaths:
         remote_path = join_path(REMOTE_PATH, _rel_path(filepath))
         _run_shell_command('ssh', REMOTE_HOST, f"rm -vf '{remote_path}'")
