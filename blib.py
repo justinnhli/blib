@@ -238,7 +238,7 @@ def do_lint():
                 continue
             people = entry[attribute].split(' and ')
             if any((',' not in person) for person in people if person not in WEIRD_NAMES):
-                print(f'unconforming {attribute}s in {entry_id}:')
+                print(f'non-conforming {attribute}s in {entry_id}:')
                 print(f'    current: {entry[attribute]}')
                 pattern = '(?P<first>[A-Z][^ ]*( [A-Z][^ ]*)*) (?P<last>.*)'
                 suggestion = ' and '.join([
@@ -266,8 +266,8 @@ def do_lint():
                 current_id = re.sub(suffix + '$', '', current_id)
         if not entry_id.lower().startswith(current_id.lower()):
             print(f'suspicious ID: {current_id.lower()} vs {entry_id.lower()}')
-            print(f'    {current_id.lower()}')
-            print(f'    {entry_id.lower()}')
+            print(f'    Current: {current_id.lower()}')
+            print(f'    Computed: {entry_id.lower()}')
     # make sure all files in the library have an entry
     library = _get_library()
     for key in set(library.keys()) - set(entries.keys()):
