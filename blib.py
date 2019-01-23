@@ -163,24 +163,12 @@ def _run_shell_command(command, *args, capture_output=False, verbose=True):
 
 
 def _yield_all_attributes(*attributes, filter_fn=None):
-    for entry in _read_bibtex().values():
+    for entry in read_library().values():
         if filter_fn and not filter_fn(entry):
             continue
         for role in attributes:
             if role in entry:
                 yield entry[role]
-
-
-def _read_bibtex(use_cache=True):
-    if use_cache and exists(BIBTEX_CACHE_PATH) and getmtime(BIBTEX_CACHE_PATH) > getmtime(BIBTEX_PATH):
-        with open(BIBTEX_CACHE_PATH) as fd:
-            return literal_eval(fd.read())
-    if not isdir(dirname(BIBTEX_CACHE_PATH)):
-        makedirs(dirname(BIBTEX_CACHE_PATH))
-    data = PARSER.parse_file(BIBTEX_PATH)
-    with open(BIBTEX_CACHE_PATH, 'w') as fd:
-        fd.write(repr(data))
-    return data
 
 
 def _read_tags():
@@ -193,6 +181,23 @@ def _read_tags():
             entry_id, *tags = line.split(' ')
             result[entry_id] = set(tags)
     return result
+
+
+def read_library(use_cache=True):
+    if use_cache and exists(BIBTEX_CACHE_PATH) and getmtime(BIBTEX_CACHE_PATH) > getmtime(BIBTEX_PATH):
+        with open(BIBTEX_CACHE_PATH) as fd:
+            library = literal_eval(fd.read())
+    else:
+        if not isdir(dirname(BIBTEX_CACHE_PATH)):
+            makedirs(dirname(BIBTEX_CACHE_PATH))
+        library = PARSER.parse_file(BIBTEX_PATH)
+        with open(BIBTEX_CACHE_PATH, 'w') as fd:
+            fd.write(repr(library))
+    tags = _read_tags()
+    for paper_id, paper_tags in tags.items():
+        if paper_id in library:
+            library[paper_id]['tags'] = paper_tags
+    return library
 
 
 # main actions
