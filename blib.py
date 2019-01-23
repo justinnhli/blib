@@ -260,7 +260,14 @@ def do_lint():
         print('missing entry for file {}'.format(library[key]))
     # make sure all unusual words are quoted
     for entry_id, entry in entries.items():
-        for word in entry['title'].split():
+        title = entry['title']
+        changed = True
+        while changed:
+            changed = False
+            if re.search('{[^{}]*}', title):
+                title = re.sub('{[^{}]*}', '', title)
+                changed = True
+        for word in title.split():
             if '{' in word:
                 continue
             word = re.sub('[-/][A-Z]', '', word)
