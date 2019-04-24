@@ -208,7 +208,6 @@ def do_tag(filepath, *tags):
 
 
 def do_lint():
-
     entries = read_library()
     # check for non "last, first" authors and editors
     for entry_id, entry in entries.items():
