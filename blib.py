@@ -53,9 +53,10 @@ class BibTexWalker(ASTWalker):
 
     def _parse_BibtexFile(self, ast, results):
         id_counts = Counter(kv[0] for kv in results)
-        assert not any(count > 1 for count in id_counts.values()), (
-            'Duplicate IDs:\n' + '\n'.join('    ' + key for key, count in id_counts.items() if count > 1)
-        )
+        for entry_id, count in id_counts.most_common():
+            if count == 1:
+                break
+            print(f'duplicate IDs: {entry_id}')
         return dict(results)
 
     def _parse_BibtexEntry(self, ast, results):
@@ -219,7 +220,8 @@ def do_lint():
             people = entry[attribute].split(' and ')
             if any((',' not in person) for person in people if person not in WEIRD_NAMES):
                 print(f'non-conforming {attribute}s in {entry_id}:')
-                print(f'    current: {entry[attribute]}')
+                print(f'    current:')
+                print(f'        {attribute} = {{{entry[attribute]}}},')
                 pattern = '(?P<first>[A-Z][^ ]*( [A-Z][^ ]*)*) (?P<last>.*)'
                 suggestion = ' and '.join([
                     person if person in WEIRD_NAMES
@@ -229,7 +231,8 @@ def do_lint():
                         person)
                     for person in people
                 ])
-                print(f'    suggested: {suggestion}')
+                print(f'    suggested:')
+                print(f'        {attribute} = {{{suggestion}}},')
     # check for incorrectly-formed IDs
     for current_id, entry in entries.items():
         if entry['author'] in WEIRD_NAMES:
