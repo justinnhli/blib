@@ -368,39 +368,36 @@ def do_sync():
 
 
 def do_diff():
-    """Original shell script:
-
-    local_list="$(cd "$LOCAL_PATH" && find . -name '*.pdf')"
-    remote_list="$()"
-    result="$(diff <(echo "$local_list" | sort) <(echo "$remote_list" | sort))"
-    if [ "$result" != "" ]; then
-        echo 'diff local remote'
-        echo "$result"
-    fi;;
-    """
-    local_files = _run_shell_command(
+    local_output = _run_shell_command(
         'find',
         LIBRARY_DIR,
         '-name', '*.pdf',
+        '-exec', 'md5sum', '{}', ';',
         capture_output=True,
         verbose=False,
-    ).stdout.decode('utf-8').splitlines()
-    remote_files = _run_shell_command(
+    )
+    remote_output = _run_shell_command(
         'ssh',
         REMOTE_HOST,
-        f"find {REMOTE_PATH} -name '*.pdf'",
+        f"find {REMOTE_PATH} -name '*.pdf' -exec md5sum '{{}}' ';'",
         capture_output=True,
         verbose=False,
-    ).stdout.decode('utf-8').splitlines()
-    local_files = set(basename(path) for path in local_files)
-    remote_files = set(basename(path) for path in remote_files)
+    )
+    hashes = defaultdict(dict)
+    for location, output in zip(('local', 'remote'), (local_output, remote_output)):
+        for line in output.stdout.decode('utf-8').splitlines():
+            md5_hash, path = line.split()
+            hashes[Path(path).stem][location] = md5_hash
     lines = {}
-    for diff in local_files - remote_files:
-        lines[diff] = '<'
-    for diff in remote_files - local_files:
-        lines[diff] = '>'
-    for diff, symbol in sorted(lines.items()):
-        print(f'{symbol} {diff}')
+    for stem, file_hashes in hashes.items():
+        if 'local' not in file_hashes:
+            lines[stem] = '>'
+        elif 'remote' not in file_hashes:
+            lines[stem] = '<'
+        elif file_hashes['local'] != file_hashes['remote']:
+            lines[stem] = '!'
+    for stem, symbol in sorted(lines.items()):
+        print(f'{symbol} {stem}')
 
 
 def do_push():
