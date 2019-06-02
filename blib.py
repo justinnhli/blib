@@ -3,29 +3,23 @@
 import re
 from argparse import ArgumentParser
 from ast import literal_eval
-from collections import Counter
+from collections import Counter, defaultdict
 from os import makedirs, walk
-from os.path import dirname, basename, realpath, expanduser, isdir
-from os.path import join as join_path, exists, getmtime, splitext
+from os.path import getmtime
+from pathlib import Path
 from subprocess import run
 
 from pegparse import ASTWalker, create_parser_from_file
 
-CACHE_DIR = '~/.cache/blib'
-LIBRARY_DIR = '~/papers'
+CACHE_DIR = Path('~/.cache/blib').expanduser().resolve()
+LIBRARY_DIR = Path('~/papers').expanduser().resolve()
 
-CACHE_DIR = realpath(expanduser(CACHE_DIR))
-LIBRARY_DIR = realpath(expanduser(LIBRARY_DIR))
-
-BIBTEX_PATH = '~/scholarship/journal/library.bib'
-TAGS_PATH = '~/scholarship/journal/papers'
+BIBTEX_PATH = Path('~/scholarship/journal/library.bib').expanduser().resolve()
+TAGS_PATH = Path('~/scholarship/journal/papers').expanduser().resolve()
 REMOTE_HOST = 'justinnhli.com'
-REMOTE_PATH = '/home/justinnhli/justinnhli.com/papers'
+REMOTE_PATH = Path('/home/justinnhli/justinnhli.com/papers').resolve()
 
-BIBTEX_PATH = realpath(expanduser(BIBTEX_PATH))
-TAGS_PATH = realpath(expanduser(TAGS_PATH))
-
-BIBTEX_CACHE_PATH = join_path(CACHE_DIR, 'bibtex')
+BIBTEX_CACHE_PATH = CACHE_DIR.joinpath('bibtex')
 
 
 WEIRD_NAMES = {
@@ -53,10 +47,7 @@ class BibTexWalker(ASTWalker):
     def __init__(self):
         """Initialize a ReactionWalker."""
         super().__init__(
-            create_parser_from_file(join_path(
-                dirname(realpath(__file__)),
-                'bibtex.ebnf',
-            )),
+            create_parser_from_file(Path(__file__).parent.joinpath('bibtex.ebnf')),
             'BibtexFile',
         )
 
@@ -121,46 +112,37 @@ def main():
 # utilities
 
 
-def _well_named(name):
+def _well_named(path):
     """Check if a name follows the convention.
 
     The convention is AuthorYearBlurb, with no punctuation.
 
     Arguments:
-        name (str): The name of the file.
+        path (Path): The name of the file.
 
     Returns:
         bool: True if the name follows the convention.
     """
-    return re.match('[a-z]+[0-9]{4}[0-9a-z]+(.pdf)?$', basename(name), re.IGNORECASE)
-
-
-def _rel_path(filepath):
-    if not _well_named(filepath):
-        print(f'WARNING: file {filepath} does not match AuthorYearBlurb convention')
-    if not filepath.endswith('.pdf'):
-        filepath += '.pdf'
-    filepath = basename(filepath)
-    return join_path(filepath[0].lower(), filepath)
+    return re.fullmatch('[a-z]+[0-9]{4}[0-9a-z]+(.pdf)?', path.name, flags=re.IGNORECASE)
 
 
 def _get_url(filepath):
-    if not filepath.endswith('.pdf'):
-        filepath += '.pdf'
-    return 'https://' + join_path(REMOTE_HOST, 'papers', _rel_path(filepath))
+    return 'https://' + Path(REMOTE_HOST, 'papers', filepath.stem[0], filepath.stem + '.pdf')
 
 
-def _store(filepath):
-    old_path = realpath(expanduser(filepath))
-    new_path = join_path(LIBRARY_DIR, _rel_path(old_path))
+def _store(old_path):
+    new_path = Path(LIBRARY_DIR, old_path.stem + '.pdf')
     if old_path != new_path:
         _run_shell_command('mv', old_path, new_path)
 
 
 def _get_library():
     papers = {}
-    for path, _, files in walk(LIBRARY_DIR):
-        papers.update([basename(f)[:-4], join_path(path, f)] for f in files if f.endswith('.pdf'))
+    for dir_path, _, file_names in walk(LIBRARY_DIR):
+        for name in file_names:
+            path = Path(dir_path, name)
+            if path.suffix == '.pdf':
+                papers[path.stem] = path
     return papers
 
 
@@ -195,14 +177,13 @@ def _read_tags():
 
 
 def read_library(use_cache=True):
-    if use_cache and exists(BIBTEX_CACHE_PATH) and getmtime(BIBTEX_CACHE_PATH) > getmtime(BIBTEX_PATH):
-        with open(BIBTEX_CACHE_PATH) as fd:
+    if use_cache and BIBTEX_CACHE_PATH.exists() and getmtime(BIBTEX_CACHE_PATH) > getmtime(BIBTEX_PATH):
+        with BIBTEX_CACHE_PATH.open() as fd:
             library = literal_eval(fd.read())
     else:
-        if not isdir(dirname(BIBTEX_CACHE_PATH)):
-            makedirs(dirname(BIBTEX_CACHE_PATH))
+        makedirs(BIBTEX_CACHE_PATH.parent, exist_ok=True)
         library = PARSER.parse_file(BIBTEX_PATH)
-        with open(BIBTEX_CACHE_PATH, 'w') as fd:
+        with BIBTEX_CACHE_PATH.open('w') as fd:
             fd.write(repr(library))
     tags = _read_tags()
     for paper_id, paper_tags in tags.items():
@@ -221,9 +202,8 @@ def do_read(*filepaths):
 
 def do_tag(filepath, *tags):
     _store(filepath)
-    stem = splitext(basename(filepath))[0]
     with open(TAGS_PATH, 'a') as fd:
-        fd.write(' '.join([stem, *tags]) + '\n')
+        fd.write(' '.join([filepath.stem, *tags]) + '\n')
 
 
 def do_lint():
@@ -345,7 +325,7 @@ def do_tags():
 
 
 def do_index():
-    index_path = join_path(LIBRARY_DIR, 'index.html')
+    index_path = LIBRARY_DIR.joinpath('index.html')
     with open(index_path, 'w') as fd:
         fd.write('<pre>\n')
         for entry_id, entry in sorted(read_library().items()):
@@ -431,9 +411,10 @@ def do_url(*filepaths):
 
 def do_remove(*filepaths):
     for filepath in filepaths:
-        remote_path = join_path(REMOTE_PATH, _rel_path(filepath))
+        local_path = LIBRARY_DIR.joinpath(filepath.stem[0], filepath.stem + '.pdf')
+        remote_path = REMOTE_PATH.joinpath(filepath.stem[0], filepath.stem + '.pdf')
         _run_shell_command('ssh', REMOTE_HOST, f"rm -vf '{remote_path}'")
-        _run_shell_command('rm', '-vf', join_path(LIBRARY_DIR, _rel_path(filepath)))
+        _run_shell_command('rm', '-vf', local_path)
 
 
 if __name__ == '__main__':
