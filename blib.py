@@ -4,6 +4,7 @@ import re
 from argparse import ArgumentParser
 from ast import literal_eval
 from collections import Counter, defaultdict
+from distutils.spawn import find_executable
 from os import makedirs, walk
 from os.path import getmtime
 from pathlib import Path
@@ -111,6 +112,24 @@ def main():
 
 
 # utilities
+
+
+def find_md5():
+    """Determine the md5 executable and its appropriate options.
+
+    Returns:
+        List[str]: The command to run md5.
+
+    Raises:
+        FileNotFoundError: If no known md5 executable can be found.
+    """
+    md5_path = find_executable('md5sum')
+    if md5_path:
+        return [md5_path]
+    md5_path = find_executable('md5')
+    if md5_path:
+        return [md5_path, '-r']
+    raise FileNotFoundError('cannot locate md5sum or md5')
 
 
 def _well_named(path):
@@ -351,11 +370,12 @@ def do_sync():
 
 
 def do_diff():
+    md5_args = find_md5()
     local_output = _run_shell_command(
         'find',
         str(LIBRARY_DIR),
         '-name', '*.pdf',
-        '-exec', 'md5sum', '{}', ';',
+        '-exec', *md5_args, '{}', ';',
         capture_output=True,
         verbose=False,
     )
