@@ -132,9 +132,10 @@ def _get_url(filepath):
 
 
 def _store(old_path):
-    new_path = Path(LIBRARY_DIR, old_path.stem + '.pdf')
+    old_path = Path(old_path).expanduser().resolve()
+    new_path = Path(LIBRARY_DIR, old_path.name[0].lower(), old_path.stem + '.pdf')
     if old_path != new_path:
-        _run_shell_command('mv', old_path, new_path)
+        _run_shell_command('mv', str(old_path), str(new_path))
 
 
 def _get_library():
@@ -352,7 +353,7 @@ def do_sync():
 def do_diff():
     local_output = _run_shell_command(
         'find',
-        LIBRARY_DIR,
+        str(LIBRARY_DIR),
         '-name', '*.pdf',
         '-exec', 'md5sum', '{}', ';',
         capture_output=True,
@@ -413,10 +414,12 @@ def do_url(*filepaths):
 
 def do_remove(*filepaths):
     for filepath in filepaths:
-        local_path = LIBRARY_DIR.joinpath(filepath.stem[0], filepath.stem + '.pdf')
-        remote_path = REMOTE_PATH.joinpath(filepath.stem[0], filepath.stem + '.pdf')
+        filepath = Path(filepath)
+        filename = filepath.stem + '.pdf'
+        local_path = LIBRARY_DIR.joinpath(filepath.stem[0], filename)
+        remote_path = REMOTE_PATH.joinpath(filepath.stem[0], filename)
         _run_shell_command('ssh', REMOTE_HOST, f"rm -vf '{remote_path}'")
-        _run_shell_command('rm', '-vf', local_path)
+        _run_shell_command('rm', '-vf', str(local_path))
 
 
 if __name__ == '__main__':
