@@ -147,7 +147,8 @@ def _well_named(path):
 
 
 def _get_url(filepath):
-    return 'https://' + Path(REMOTE_HOST, 'papers', filepath.stem[0], filepath.stem + '.pdf')
+    filepath = Path(filepath)
+    return 'https://' + str(Path(REMOTE_HOST, 'papers', filepath.name[0].lower(), filepath.stem + '.pdf'))
 
 
 def _store(old_path):
@@ -423,7 +424,7 @@ def do_pull():
         '--rsh=ssh',
         '--exclude', '.*',
         f'{REMOTE_HOST}:{REMOTE_PATH}/',
-        LIBRARY_DIR,
+        str(LIBRARY_DIR),
     )
 
 
@@ -436,8 +437,8 @@ def do_remove(*filepaths):
     for filepath in filepaths:
         filepath = Path(filepath)
         filename = filepath.stem + '.pdf'
-        local_path = LIBRARY_DIR.joinpath(filepath.stem[0], filename)
-        remote_path = REMOTE_PATH.joinpath(filepath.stem[0], filename)
+        local_path = LIBRARY_DIR.joinpath(filepath.stem[0].lower(), filename)
+        remote_path = REMOTE_PATH.joinpath(filepath.stem[0].lower(), filename)
         _run_shell_command('ssh', REMOTE_HOST, f"rm -vf '{remote_path}'")
         _run_shell_command('rm', '-vf', str(local_path))
 
