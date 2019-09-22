@@ -98,6 +98,8 @@ def main():
         'read', 'tag', 'lint',
         # database functions
         'organizations', 'publishers', 'journals', 'conferences', 'people', 'tags',
+        # local management functions
+        'path',
         # remote management functions
         'index', 'sync', 'diff', 'push', 'pull', 'url', 'remove',
     ]
@@ -414,6 +416,13 @@ def do_push():
         f'{LIBRARY_DIR}/',
         f'{REMOTE_HOST}:{REMOTE_PATH}',
     )
+
+
+def do_path(*filepaths):
+    for filepath in filepaths:
+        filepath = Path(filepath)
+        filename = filepath.stem + '.pdf'
+        print(LIBRARY_DIR.joinpath(filepath.stem[0].lower(), filename))
 
 
 def do_pull():
