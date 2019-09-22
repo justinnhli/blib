@@ -35,6 +35,7 @@ BibtexProperty = "address"
             | "title"
             | "translator"
             | "url"
+            | "venue"
             | "volume"
             | "year";
 
