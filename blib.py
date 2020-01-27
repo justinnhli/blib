@@ -49,6 +49,7 @@ WEIRD_NAMES = {
     'Liberal Arts Computer Science Consortium': 'LACS',
     'The College Board': 'CB',
     'The Join Task Force on Computing Curricula': 'JTFCC',
+    'Open Science Collaboration': 'OSC',
     'others': '',
     '{Google Inc.}': 'Google',
     '{Gallup Inc.}': 'Gallup',
