@@ -39,7 +39,7 @@ LIBRARY_DIR = Path('~/papers').expanduser().resolve()
 BIBTEX_PATH = Path('~/scholarship/journal/library.bib').expanduser().resolve()
 TAGS_PATH = Path('~/scholarship/journal/papers').expanduser().resolve()
 REMOTE_HOST = 'justinnhli.com'
-REMOTE_PATH = Path('/home/justinnhli/justinnhli.com/papers').resolve()
+REMOTE_PATH = Path('/home/justinnhli/justinnhli.com/papers')
 
 BIBTEX_CACHE_PATH = CACHE_DIR.joinpath('bibtex')
 
